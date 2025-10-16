@@ -131,7 +131,7 @@ private struct NewsRowView: View {
             // Handle the click gesture to toggle expansion
             .onTapGesture {
                 // Only toggle if a description exists
-                guard item.description != nil else belement;t }
+                guard item.description != nil else { return } // KORRIGIERT
                 
                 // Determine if this click will EXPAND the row
                 let shouldExpand = !isExpanded
@@ -195,10 +195,12 @@ private struct NewsRowView: View {
     }
 
     private var itemProviderSystemName: String? {
+        // NewsItem does not conform to ProviderIconHints, so this will be nil
         (item as? ProviderIconHints)?.providerIconSystemName
     }
 
     private var itemProviderURL: URL? {
+        // NewsItem does not conform to ProviderIconHints, so this will be nil
         (item as? ProviderIconHints)?.providerIconURL
     }
 

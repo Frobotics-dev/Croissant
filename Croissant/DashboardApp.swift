@@ -1,6 +1,6 @@
 import SwiftUI
 
-@main
+// @main removed here, as CroissantApp is already marked as the entry point.
 struct DashboardApp: App {
     // Here we instantiate the EventKitManager once for the entire app
     // This allows it to be shared between ContentView and SettingsView
@@ -10,7 +10,8 @@ struct DashboardApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(eventKitManager: eventKitManager, newsFeedViewModel: newsFeedViewModel) // Pass the manager and view model to ContentView
+            // Die Platzhalter werden durch die @StateObject Instanzen ersetzt
+            ContentView(eventKitManager: eventKitManager, newsFeedViewModel: newsFeedViewModel)
         }
         .defaultSize(width: 800, height: 600) // Default size for the main window
         .windowStyle(.hiddenTitleBar)

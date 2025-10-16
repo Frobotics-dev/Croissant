@@ -21,12 +21,12 @@ struct SettingsView: View {
         self._eventKitManager = ObservedObject(wrappedValue: eventKitManager)
         self._newsFeedViewModel = ObservedObject(wrappedValue: newsFeedViewModel)
         
+        // TileType is defined in ContentView, assuming it's available in the module scope
         let initialOrder: [TileType] = {
             let parsed = (UserDefaults.standard.string(forKey: "tileOrder") ?? "")
                             .split(separator: ",")
                             .compactMap { TileType(rawValue: String($0)) }
             // If the stored string is empty (first launch or reset), use all cases as default order
-            // Note: TileType is defined in ContentView.swift
             return parsed.isEmpty ? TileType.allCases : parsed
         }()
         
