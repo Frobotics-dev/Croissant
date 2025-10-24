@@ -6,35 +6,26 @@ struct WeatherManager {
     private init() {}
 
     enum WeatherError: Error, LocalizedError {
-        case missingAPIKey
         case badURL
         case badResponse(status: Int, message: String?)
 
         var errorDescription: String? {
             switch self {
-            case .missingAPIKey: return "Missing WEATHER_API_KEY_PLIST in Info.plist"
             case .badURL: return "Failed to build WeatherAPI URL"
             case .badResponse(let status, let message): return "WeatherAPI HTTP status: \(status)\(message.map { ": \($0)" } ?? "")"
             }
         }
     }
 
-    private var apiKey: String? {
-        Bundle.main.object(forInfoDictionaryKey: "WEATHER_API_KEY_PLIST") as? String
-    }
-
     // MARK: API
     @discardableResult
     func fetchForecast(lat: Double, lon: Double, days: Int = 3, includeAlerts: Bool = true) async throws -> ForecastResponse {
-        guard let apiKey, apiKey.isEmpty == false, apiKey.contains("$(") == false else { throw WeatherError.missingAPIKey }
-
-        var comps = URLComponents(string: "https://api.weatherapi.com/v1/forecast.json")!
+        var comps = URLComponents(string: "https://weatherapi.frobotics.workers.dev/api/weather")!
         comps.queryItems = [
-            URLQueryItem(name: "key", value: apiKey),
-            URLQueryItem(name: "q", value: "\(lat),\(lon)"),
+            URLQueryItem(name: "lat", value: String(lat)),
+            URLQueryItem(name: "lon", value: String(lon)),
             URLQueryItem(name: "days", value: String(days)),
-            URLQueryItem(name: "alerts", value: includeAlerts ? "yes" : "no"),
-            URLQueryItem(name: "aqi", value: "no")
+            URLQueryItem(name: "alerts", value: includeAlerts ? "yes" : "no")
         ]
         guard let url = comps.url else { throw WeatherError.badURL }
 

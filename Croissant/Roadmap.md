@@ -6,6 +6,7 @@
 - GitHub Seite auf Public, App zum Download anbieten, Hinweise wegen fehlender Notarization, Readme
 - Default Einstellungen prüfen
 - Last updated für Wetter
+- Wetter lädt beim Start oft nicht oder nur stark verzögert
 - SystemInfo überarbeiten (mehr Spacer, moderner Lock)
 - Bug: Wetter lädt beim ersten Start manchmal nicht
 - Alerts in Wetter-Widget oder Titelleiste
