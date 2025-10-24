@@ -1,31 +1,35 @@
-- Rechtsklick-Aktionen
-- Kachel mit Apple Maps und Vorschlägen in der Umgebung, Commute / Drive Time Tile, Arbeitsweg, Verkehrslage, Fahrzeit (Apple Maps API / Transit API), Sandbox-fähig mit MKDirections (MapKit, keine privaten APIs)
-- Logs reduzierend und Kommentare reduzieren, unnötigen Code löschen
-- Sprachpakete
-- Bug: Kurz vor/nach 0 Uhr werden Verbindung doppelt angezeigt/für den darauffolgenden Tag mit Ankunft in >= 1440 Minuten (also einem Tag) --> siehe Screenshot Desktop
-- GitHub Seite auf Public, App zum Download anbieten, Hinweise wegen fehlender Notarization, Readme
-- Default Einstellungen prüfen
-- Last updated für Wetter
-- Wetter lädt beim Start oft nicht oder nur stark verzögert
+## Features für die App
+- Rechtsklick-Aktionen im Kalender
 - SystemInfo überarbeiten (mehr Spacer, moderner Lock)
-- Bug: Wetter lädt beim ersten Start manchmal nicht
 - Alerts in Wetter-Widget oder Titelleiste
+- Default Einstellungen prüfen
+- Zuverlässigere Aktualisierung der Views/Tage/Daten
+- Aktien-Kurse/-Werte
+- Einstellungen: Link zu Q&A section
+- Sprachpakete
+- Logs reduzierend und Kommentare reduzieren, unnötigen Code löschen (AI Kommentare entfernen)
+- Kachel mit Apple Maps und Vorschlägen in der Umgebung, Commute / Drive Time Tile, Arbeitsweg, Verkehrslage, Fahrzeit (Apple Maps API / Transit API), Sandbox-fähig mit MKDirections (MapKit, keine privaten APIs)
+
+## Features zum Debuggen
 - Debugging settings: Reload data button
 - Debugging settings: Fetch location
-- Eigene Website / App auf buy me a coffee zum Download anbieten
-- Bewerben auf MacRumors, 9to5,...
-- Bug: Error-Zeichen verschwindet nicht, obwohl Transit Daten geladen wurden
-- Bug: Tag aktualisieren, wenn ein neuer Tag anbricht (Kalender, Erinnerungen)
-- Aktien
-- Updateprozess
-- Diagnose Daten
+- Diagnosedaten sammeln und über Server bereitstellen
+- Last updated für Wetter
+
+## Organisatorisch
 - Download-Zahlen in GitHub einsehen
-- Neue App bauen
-- Einstellungen: Link zu Q&A section
-- KI-Zusammenfassung auf Knopfdruck:
+- Developer Programm registrieren & App notarizieren lassen
+- Anfrage zum Bewerben auf MacRumors, 9to5,...
+- Release und App zum Download anbieten / Updateprozess einrichten / App automatisch bauen und release auf GitHub
 
+## Bugs
+- Plus-Button rutscht bei Kalender nach oben, wenn keine Events anstehen --> genauso wie bei ReminerTile fixen
+- Kurz vor/nach 0 Uhr werden Verbindung doppelt angezeigt/für den darauffolgenden Tag mit Ankunft in >= 1440 Minuten (also einem Tag) 
+- Wetter lädt beim Start oft nicht oder nur stark verzögert
+- Error-Zeichen verschwindet nicht, obwohl Transit Daten geladen wurden
+- Tag aktualisieren, wenn ein neuer Tag anbricht (Kalender, Erinnerungen)
 
-
+## KI-Zusammenfassung per Button:
 
 Sie sind ein Hilfstool innerhalb einer macOS App namens „Croissant“, die ein Dashboard mit wichtigen Informationen für den aktuellen Tag bereitstellt.
 
