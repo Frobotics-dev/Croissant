@@ -1,0 +1,7 @@
+//
+//  Config.xcconfig
+//  Croissant
+//
+//  Created by Frederik Mondel on 23.10.25.
+//
+WEATHER_API_KEY = 4b43e8d27d8949fca5683814252310 //Please do not share, thanks
