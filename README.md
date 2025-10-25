@@ -116,4 +116,4 @@ Thanks for helping turn this student project into something real! :)
 
 <a href="https://www.buymeacoffee.com/frederik.m" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
 
-![AppIcon](https://github.com/user-attachments/assets/ccb8e6de-ef71-4ae5-ac51-63d4d82a8404)
+<!--![AppIcon](https://github.com/user-attachments/assets/ccb8e6de-ef71-4ae5-ac51-63d4d82a8404)-->
