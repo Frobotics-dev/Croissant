@@ -90,6 +90,13 @@ No, you don't.
 </details>
 
 <details>
+<summary><strong>How does it all work?</strong></summary>
+In addition to the pure programming of logic and user interface, this app also calls external databases on servers. 
+  Cloudflare therefore acts as an intermediary “worker” between the macOS app and the Weather API to protect my API key. Clouflare then executes the Get call in a protected manner and passes the JSON to the app.
+The Transit API, which is provided by a team of open source developers and processes and makes available data from the Deutsche Bahn API, works in a similar way.
+</details>
+
+<details>
 <summary><strong>Why is the app called "Croissant"?</strong></summary>
 For me, the app is part of my daily morning routine, just like a good croissant is part of breakfast in France. With this in mind, the app gives me a briefing on the day ahead while I enjoy a cup of coffee and, ideally, a croissant: What meetings do I have today? What's happening in the world? When does the next bus to university leave?
 </details>
