@@ -8,6 +8,7 @@ Croissant is a minimalist macOS dashboard designed to start your day right — c
 
 ## Important Notes
 - The app is currently optimized for use in Germany. Expansion is planned if there is sufficient demand.
+- Compatibility tested for macOS Tahoe and above.
 - The app has not yet been notarized by Apple, but is fully functional. More information can be found in the Q&A section.
 
 ## Required permissions
