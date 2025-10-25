@@ -1,5 +1,3 @@
-+++ This app is still under development and not ready for release yet. Thank you! +++
-
 ## Croissant: Your Daily Essential.
 
 Croissant is a minimalist macOS dashboard designed to start your day right — combining weather, news, calendar events, reminders, system info and nearby public transport departures in one elegant view.
@@ -19,7 +17,7 @@ Croissant is a minimalist macOS dashboard designed to start your day right — c
 I do **not store, sell, or otherwise use any data**. Your data remains on your device. Exception: Your location is used anonymously to retrieve weather and public transport data. 
 
 ## Download
-As soon as the app has reached a state for going live, you will find the download link here.
+You can download "Croissant" here: <a href="https://github.com/Frobotics-dev/Croissant/releases">Latest Release</a> 
 
 ## Q&A section
 <details>
