@@ -2,8 +2,10 @@
 
 Croissant is a minimalist macOS dashboard designed to start your day right — combining weather, news, calendar events, reminders, system info and nearby public transport departures in one elegant view.
 
-<img src="https://github.com/user-attachments/assets/89f4e92a-4b76-4bbe-a180-775a1b43c460" width="45%"/>
-<img src="https://github.com/user-attachments/assets/c8887330-be48-4a8f-9efe-892b6e0449b4" width="45%"/>
+<img src="https://github.com/user-attachments/assets/89f4e92a-4b76-4bbe-a180-775a1b43c460" width="33%"/>
+<img src="https://github.com/user-attachments/assets/c8887330-be48-4a8f-9efe-892b6e0449b4" width="33%"/>
+<img src="https://github.com/user-attachments/assets/f0724961-991c-40b7-ab9c-5246113e9fad" width="33%"/>
+
 
 ## Important Notes
 - The app is currently optimized for use in Germany. Expansion is planned if there is sufficient demand.
