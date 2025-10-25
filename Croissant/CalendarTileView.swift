@@ -156,6 +156,8 @@ struct CalendarTileView: View {
                     .buttonStyle(.borderedProminent) // More prominent button for permission
                 }
             }
+            
+            Spacer() // FIX: Dieser Spacer stellt sicher, dass der VStack die volle Höhe einnimmt, unabhängig vom Inhalt der ScrollView.
         }
         // .tileStyle() // REMOVED: DashboardTileView now applies the styling
         .onAppear {
@@ -294,4 +296,3 @@ struct EventRow: View {
         }
     }
 }
-

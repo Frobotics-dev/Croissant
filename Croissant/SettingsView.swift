@@ -2,6 +2,7 @@ import SwiftUI
 import EventKit
 import AppKit
 import CoreLocation // Needed for CLAuthorizationStatus
+import OSLog
 
 // Enum to define the different tabs for clean navigation
 private enum SettingsTab: Hashable {
@@ -306,6 +307,10 @@ private struct DebuggingSettingsView: View {
     @AppStorage("isDebuggingEnabled") private var isDebuggingEnabled: Bool = false
     @ObservedObject var transitViewModel: TransitViewModel // Injected to access searchRadiusMeters
     @ObservedObject var locationManager: LocationManager // Injected for location settings
+    @State private var isComputingDownloads: Bool = false
+    @State private var totalReleaseDownloads: Int?
+    @State private var downloadsError: String?
+    private let logger = Logger(subsystem: "Croissant", category: "GitHubAnalytics")
 
     var body: some View {
         Form {
@@ -349,15 +354,92 @@ private struct DebuggingSettingsView: View {
                         .foregroundColor(.red)
                 }
             }
+            Section(header: Text("GitHub Analytics").font(.title2)) {
+                Button(action: {
+                    Task { await fetchTotalReleaseDownloads() }
+                }) {
+                    if isComputingDownloads {
+                        HStack {
+                            ProgressView()
+                            Text("Loading…")
+                        }
+                    } else {
+                        Label("Fetch total release asset downloads", systemImage: "arrow.down.circle")
+                    }
+                }
+                .disabled(isComputingDownloads)
+
+                if let total = totalReleaseDownloads {
+                    Text("Total asset downloads across all releases: \(total)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+
+                if let err = downloadsError {
+                    Text("Error: \(err)")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+            }
         }
         .formStyle(.grouped)
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
     }
+
+    private func fetchTotalReleaseDownloads() async {
+        await MainActor.run {
+            isComputingDownloads = true
+            downloadsError = nil
+            totalReleaseDownloads = nil
+        }
+
+        guard let url = URL(string: "https://api.github.com/repos/Frobotics-dev/Croissant/releases") else {
+            await MainActor.run {
+                downloadsError = "Invalid URL"
+                isComputingDownloads = false
+            }
+            return
+        }
+
+        do {
+            var request = URLRequest(url: url)
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+            request.setValue("CroissantApp", forHTTPHeaderField: "User-Agent")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, http.statusCode != 200 {
+                throw NSError(domain: "HTTPError", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode)"])
+            }
+
+            struct GHAsset: Decodable { let download_count: Int }
+            struct GHRelease: Decodable { let assets: [GHAsset] }
+
+            let releases = try JSONDecoder().decode([GHRelease].self, from: data)
+            let total = releases.reduce(0) { $0 + $1.assets.reduce(0) { $0 + $1.download_count } }
+
+            await MainActor.run {
+                totalReleaseDownloads = total
+                isComputingDownloads = false
+                logger.info("Fetched total release downloads: \(total, privacy: .public)")
+            }
+        } catch {
+            await MainActor.run {
+                logger.error("Failed to fetch release downloads: \(error.localizedDescription, privacy: .public)")
+                downloadsError = error.localizedDescription
+                isComputingDownloads = false
+            }
+        }
+    }
 }
 
 // MARK: - Sub-view for About
 private struct AboutSettingsView: View {
+    @State private var isCheckingUpdate: Bool = false
+    @State private var latestVersion: String?
+    @State private var updateError: String?
+    private let updatesLogger = Logger(subsystem: "Croissant", category: "Updates")
     var body: some View {
         Form {
             Section(header: Text("About the App").font(.title2)) {
@@ -365,16 +447,138 @@ private struct AboutSettingsView: View {
                     .font(.callout)
                     .foregroundColor(.secondary)
 
-                Link(destination: URL(string: "mailto:frobotics@freenet.de?subject=Feedback%20to%20your%20App%20%22Croissaint%22&body=Hi%20Frederik%2C")!) {
-                    Label("Send Feedback", systemImage: "envelope.fill")
+                HStack {
+                    Spacer()
+                    Link(destination: URL(string: "https://github.com/Frobotics-dev/Croissant")!) {
+                        Label("View on GitHub", systemImage: "globe")
+                    }
+                    .buttonStyle(.bordered)
+                    Spacer()
                 }
-                .buttonStyle(.borderedProminent)
                 .padding(.top)
+
+                HStack {
+                    Spacer()
+                    Link(destination: URL(string: "https://github.com/Frobotics-dev/Croissant?tab=readme-ov-file#qa-section")!) {
+                        Label("Help / Q&A", systemImage: "questionmark.circle")
+                    }
+                    .buttonStyle(.bordered)
+                    Spacer()
+                }
+                .padding(.top, 4)
+
+                HStack {
+                    Spacer()
+                    Link(destination: URL(string: "mailto:frobotics@freenet.de?subject=Feedback%20to%20your%20App%20%22Croissaint%22&body=Hi%20Frederik%2C")!) {
+                        Label("Send Feedback", systemImage: "envelope.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    Spacer()
+                }
+                .padding(.top, 4)
+
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        Task { await checkForUpdates() }
+                    }) {
+                        if isCheckingUpdate {
+                            HStack {
+                                ProgressView()
+                                Text("Checking for updates…")
+                            }
+                        } else {
+                            Label("Check for updates", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isCheckingUpdate)
+                    Spacer()
+                }
+                .padding(.top, 6)
+
+                if let latest = latestVersion {
+                    Text("Latest release on GitHub: v\(latest)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    if let current = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+                        if isUpdateAvailable(current: current, latest: latest) {
+                            Text("An update is available. You are on v\(current).")
+                                .font(.subheadline)
+                                .foregroundColor(.orange)
+                            if let url = URL(string: "https://github.com/Frobotics-dev/Croissant/releases/latest") {
+                                Link(destination: url) {
+                                    Label("Open latest release", systemImage: "safari")
+                                }
+                            }
+                        } else {
+                            Text("You are up to date.")
+                                .font(.subheadline)
+                                .foregroundColor(.green)
+                        }
+                    }
+                }
+
+                if let err = updateError {
+                    Text("Error checking updates: \(err)")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
             }
         }
         .formStyle(.grouped)
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
+    }
+
+    private func checkForUpdates() async {
+        await MainActor.run {
+            isCheckingUpdate = true
+            latestVersion = nil
+            updateError = nil
+        }
+        do {
+            let latest = try await fetchLatestGitHubVersion()
+            await MainActor.run {
+                latestVersion = latest
+                isCheckingUpdate = false
+                updatesLogger.info("Checked updates, latest is v\(latest, privacy: .public)")
+            }
+        } catch {
+            await MainActor.run {
+                updateError = error.localizedDescription
+                isCheckingUpdate = false
+                updatesLogger.error("Update check failed: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private func fetchLatestGitHubVersion() async throws -> String {
+        let url = URL(string: "https://api.github.com/repos/Frobotics-dev/Croissant/releases/latest")!
+        var req = URLRequest(url: url)
+        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        req.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
+        req.setValue("CroissantApp", forHTTPHeaderField: "User-Agent")
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
+            let code = (resp as? HTTPURLResponse)?.statusCode ?? -1
+            throw NSError(domain: "HTTPError", code: code, userInfo: [NSLocalizedDescriptionKey: "HTTP \(code)"])
+        }
+        struct GHRelease: Decodable { let tag_name: String }
+        let rel = try JSONDecoder().decode(GHRelease.self, from: data)
+        return rel.tag_name.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
+    }
+
+    private func isUpdateAvailable(current: String, latest: String) -> Bool {
+        func parts(_ s: String) -> [Int] { s.split(separator: ".").map { Int($0) ?? 0 } }
+        let a = parts(current), b = parts(latest)
+        let maxc = max(a.count, b.count)
+        for i in 0..<maxc {
+            let ai = i < a.count ? a[i] : 0
+            let bi = i < b.count ? b[i] : 0
+            if ai != bi { return ai < bi }
+        }
+        return false
     }
 }
 

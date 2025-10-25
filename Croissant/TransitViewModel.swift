@@ -244,6 +244,8 @@ final class TransitViewModel: ObservableObject {
             .sink { [weak self] location in
                 guard let self = self else { return }
                 
+                self.errorMessage = nil
+                
                 print("✅ [TransitVM] Subscription fired: new location lat=\(location.latitude), lon=\(location.longitude)")
                 
                 let newCoord = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
@@ -265,6 +267,8 @@ final class TransitViewModel: ObservableObject {
                 self.fallbackLocationTimer10s?.invalidate()
                 self.fallbackLocationTimer5s = nil
                 self.fallbackLocationTimer10s = nil
+                
+                self.errorMessage = nil
                 
                 self.fetchNearbyStops(lat: location.latitude, lon: location.longitude)
             }
@@ -305,7 +309,9 @@ final class TransitViewModel: ObservableObject {
                 if self.locationManager?.currentLocation == nil {
                     print("⚠️ [TransitVM] 10s fallback: still no location from LocationManager.")
                     DispatchQueue.main.async {
-                        self.errorMessage = "Location update delayed. Please ensure location permissions are granted."
+                        if self.locationManager?.currentLocation == nil {
+                            self.errorMessage = "Location update delayed. Please ensure location permissions are granted."
+                        }
                     }
                 }
                 // Invalidate timers to clean up
@@ -731,6 +737,9 @@ final class TransitViewModel: ObservableObject {
                 print("🧾 🚇 [TransitVM] Sample (top 5): \(sample)")
                 
                 await MainActor.run {
+                    // FIX: Fehlermeldung bei erfolgreichem Fetch löschen
+                    self.errorMessage = nil
+                    
                     // Mark time of the last successful API fetch
                     self.lastUpdated = Date()
                     // WICHTIGE ÄNDERUNG: Die Aktualisierung von self.departures wurde entfernt.

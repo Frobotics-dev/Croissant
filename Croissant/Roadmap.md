@@ -1,32 +1,25 @@
 ## Features für die App
-- Rechtsklick-Aktionen im Kalender
-- SystemInfo überarbeiten (mehr Spacer, moderner Lock)
 - Alerts in Wetter-Widget oder Titelleiste
 - Default Einstellungen prüfen
 - Zuverlässigere Aktualisierung der Views/Tage/Daten
 - Aktien-Kurse/-Werte
-- Einstellungen: Link zu Q&A section
 - Sprachpakete
 - Logs reduzierend und Kommentare reduzieren, unnötigen Code löschen (AI Kommentare entfernen)
 - Kachel mit Apple Maps und Vorschlägen in der Umgebung, Commute / Drive Time Tile, Arbeitsweg, Verkehrslage, Fahrzeit (Apple Maps API / Transit API), Sandbox-fähig mit MKDirections (MapKit, keine privaten APIs)
+- Menüleistenaktionen
 
 ## Features zum Debuggen
 - Debugging settings: Reload data button
 - Debugging settings: Fetch location
-- Diagnosedaten sammeln und über Server bereitstellen
 - Last updated für Wetter
 
 ## Organisatorisch
-- Download-Zahlen in GitHub einsehen
-- Developer Programm registrieren & App notarizieren lassen
 - Anfrage zum Bewerben auf MacRumors, 9to5,...
-- Release und App zum Download anbieten / Updateprozess einrichten / App automatisch bauen und release auf GitHub
+- Release und App zum Download anbieten / Updateprozess einrichten / App automatisch bauen und release auf GitHub / GitHub Actions: einfachen Build-Job hinzufügen (macOS runner), ohne Secrets ins Log zu schreiben.
 
 ## Bugs
-- Plus-Button rutscht bei Kalender nach oben, wenn keine Events anstehen --> genauso wie bei ReminerTile fixen
 - Kurz vor/nach 0 Uhr werden Verbindung doppelt angezeigt/für den darauffolgenden Tag mit Ankunft in >= 1440 Minuten (also einem Tag) 
 - Wetter lädt beim Start oft nicht oder nur stark verzögert
-- Error-Zeichen verschwindet nicht, obwohl Transit Daten geladen wurden
 - Tag aktualisieren, wenn ein neuer Tag anbricht (Kalender, Erinnerungen)
 
 ## KI-Zusammenfassung per Button:

@@ -17,7 +17,6 @@ struct SystemInfoTileView: View {
             Label("System Info", systemImage: "info.circle")
                 .font(.headline)
             
-            // NEW: Ensure this VStack uses the full width
             VStack(alignment: .leading, spacing: 5) {
                 // Uptime
                 SystemInfoRow(icon: "hourglass", label: "Uptime", value: manager.uptime)
@@ -45,24 +44,32 @@ struct SystemInfoTileView: View {
                 if manager.monitors.isEmpty {
                     SystemInfoRow(icon: "display", label: "Displays", value: manager.externalMonitorConnected ? "External connected" : "Only built-in")
                 } else {
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 3) {
                         ForEach(manager.monitors) { m in
                             VStack(alignment: .leading, spacing: 2) {
-                                HStack(alignment: .center, spacing: 6) {
+                                HStack(alignment: .center, spacing: 7) {
                                     Image(systemName: "display")
-                                        .font(.body)
-                                        .foregroundColor(.secondary)
-                                        .frame(width: 25, alignment: .center)
+                                        .symbolRenderingMode(.hierarchical)
+                                        .font(.footnote.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 18, height: 18)
+                                        .padding(3)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                                .fill(Color.secondary.opacity(0.12))
+                                        )
+                                        .frame(width: 28, alignment: .center)
                                     Text(monitorLabel(for: m))
-                                        .foregroundColor(.secondary)
-                                        .fontWeight(.semibold)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
                                 }
                                 Text(monitorValue(for: m))
-                                    .font(.body)
-                                    .foregroundColor(.primary)
+                                    .font(.body.monospacedDigit())
+                                    .foregroundStyle(.primary)
                                     .lineLimit(1)
-                                    .minimumScaleFactor(0.8)
-                                    .padding(.leading, 31) // Align text under the label
+                                    .minimumScaleFactor(0.75)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
                             }
                         }
                     }
@@ -70,7 +77,6 @@ struct SystemInfoTileView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading) // NEW: Ensure rows use full width
         }
-        // .tileStyle() // REMOVED: DashboardTileView now applies the styling
         .onAppear {
             manager.startMonitoring()
         }
@@ -148,27 +154,36 @@ struct SystemInfoRow: View {
     var iconColor: Color = .secondary
 
     var body: some View {
-        HStack(alignment: .center) { // CHANGED: Explicit spacing removed, using Spacer now
+        HStack(alignment: .center, spacing: 7) {
+            // Icon chip
             Image(systemName: icon)
-                .font(.body)
-                .foregroundColor(iconColor)
-                .frame(width: 25, alignment: .center) // Fixed width for the icon
-            
-            Spacer().frame(width: 8) // NEW: Fixed spacing between icon and label
-            
-            Text(label) // Removed the colon here
-                .foregroundColor(.secondary)
-                .lineLimit(1) // Ensure the label doesn't wrap
-                // The label doesn't get a fixed width or priority to remain flexible
-            
-            Spacer(minLength: 5) // This Spacer pushes the value text to the right
-            
+                .symbolRenderingMode(.hierarchical)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(iconColor)
+                .frame(width: 18, height: 18)
+                .padding(3)
+                .background(
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(iconColor.opacity(0.12))
+                )
+                .frame(width: 28, alignment: .center)
+
+            // Label
+            Text(label)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 6)
+
+            // Value
             Text(value)
-                .font(.body)
-                .lineLimit(1) // Ensure the value text doesn't wrap
-                .minimumScaleFactor(0.7) // Allows text to shrink
-                .multilineTextAlignment(.trailing) // Right alignment
-                .layoutPriority(1) // Gives the value text higher priority in claiming space
+                .font(.body.monospacedDigit())
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .multilineTextAlignment(.trailing)
+                .layoutPriority(1)
         }
     }
 }
