@@ -18,7 +18,7 @@ Croissant is a minimalist macOS dashboard designed to start your day right — c
 
 I do **not store, sell, or otherwise use any data**. Your data remains on your device. Exception: Your location is used anonymously to retrieve weather and public transport data. 
 
-## Download of the app
+## Download
 As soon as the app has reached a state for going live, you will find the download link here.
 
 ## Q&A section
