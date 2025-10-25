@@ -81,7 +81,8 @@ I don't have any plans to do so at the moment. A fairly simple workaround is to 
 
   - v6.db.transport.rest (Deutsche Bahn AG)
   - api.weatherapi.com/v1/forecast.json (Weather API)
-  - RSS-Feeds (news feed)
+  - api.github.com/repos/Frobotics-dev/Croissant/releases (Check for updates)
+  - RSS-Feeds (News and headlines)
   - (coming soon) generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent (Google Gemini)
     
 </details>
