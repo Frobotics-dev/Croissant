@@ -81,6 +81,7 @@ I don't have any plans to do so at the moment. A fairly simple workaround is to 
 
   - v6.db.transport.rest (Deutsche Bahn AG)
   - api.weatherapi.com/v1/forecast.json (Weather API)
+  - RSS-Feeds (news feed)
   - (coming soon) generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent (Google Gemini)
     
 </details>
@@ -114,3 +115,5 @@ Your support lets me dedicate more time to development, pay for APIs, and push u
 Thanks for helping turn this student project into something real! :)
 
 <a href="https://www.buymeacoffee.com/frederik.m" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
+![AppIcon](https://github.com/user-attachments/assets/ccb8e6de-ef71-4ae5-ac51-63d4d82a8404)
