@@ -8,6 +8,7 @@ Croissant is a minimalist macOS dashboard designed to start your day right — c
 
 ## Important Notes
 - The app is currently optimized for use in Germany. Expansion is planned if there is sufficient demand.
+- Compatibility tested for macOS Tahoe and above.
 - The app has not yet been notarized by Apple, but is fully functional. More information can be found in the Q&A section.
 
 ## Required permissions
@@ -17,7 +18,7 @@ Croissant is a minimalist macOS dashboard designed to start your day right — c
 
 I do **not store, sell, or otherwise use any data**. Your data remains on your device. Exception: Your location is used anonymously to retrieve weather and public transport data. 
 
-## Download of the app
+## Download
 As soon as the app has reached a state for going live, you will find the download link here.
 
 ## Q&A section
@@ -80,6 +81,8 @@ I don't have any plans to do so at the moment. A fairly simple workaround is to 
 
   - v6.db.transport.rest (Deutsche Bahn AG)
   - api.weatherapi.com/v1/forecast.json (Weather API)
+  - api.github.com/repos/Frobotics-dev/Croissant/releases (Check for updates)
+  - RSS-Feeds (News and headlines)
   - (coming soon) generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent (Google Gemini)
     
 </details>
@@ -87,6 +90,13 @@ I don't have any plans to do so at the moment. A fairly simple workaround is to 
 <details>
 <summary><strong>Do I need my own API keys?</strong></summary>
 No, you don't.
+</details>
+
+<details>
+<summary><strong>How does it all work?</strong></summary>
+In addition to the pure programming of logic and user interface, this app also calls external databases on servers. 
+  Cloudflare therefore acts as an intermediary “worker” between the macOS app and the Weather API to protect my API key. Clouflare then executes the Get call in a protected manner and passes the JSON to the app.
+The Transit API, which is provided by a team of open source developers and processes and makes available data from the Deutsche Bahn API, works in a similar way.
 </details>
 
 <details>
@@ -106,3 +116,5 @@ Your support lets me dedicate more time to development, pay for APIs, and push u
 Thanks for helping turn this student project into something real! :)
 
 <a href="https://www.buymeacoffee.com/frederik.m" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
+<!--![AppIcon](https://github.com/user-attachments/assets/ccb8e6de-ef71-4ae5-ac51-63d4d82a8404)-->
