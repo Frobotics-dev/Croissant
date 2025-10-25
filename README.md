@@ -93,6 +93,12 @@ No, you don't.
 </details>
 
 <details>
+<summary><strong>What bugs are known?</strong></summary>
+Shortly before and after midnight, connections may be displayed that do not exist. However, you can recognize this by the fact that the departure time is more than 1440 minutes away (and is also displayed as such).
+  In rare cases, it may also happen that the views are not reloaded. This error is caused by incorrect location determination. As a workaround, go to Settings > Debugging > Reload View.
+</details>
+
+<details>
 <summary><strong>How does it all work?</strong></summary>
 In addition to the pure programming of logic and user interface, this app also calls external databases on servers. 
   Cloudflare therefore acts as an intermediary “worker” between the macOS app and the Weather API to protect my API key. Clouflare then executes the Get call in a protected manner and passes the JSON to the app.
