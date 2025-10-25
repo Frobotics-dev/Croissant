@@ -1,26 +1,21 @@
 ## Features für die App
-- Alerts in Wetter-Widget oder Titelleiste
-- Default Einstellungen prüfen
-- Zuverlässigere Aktualisierung der Views/Tage/Daten
-- Aktien-Kurse/-Werte
+- Wetter-Alerts (Widget/Titelleiste)
+- Aktien
 - Sprachpakete
-- Logs reduzierend und Kommentare reduzieren, unnötigen Code löschen (AI Kommentare entfernen)
-- Kachel mit Apple Maps und Vorschlägen in der Umgebung, Commute / Drive Time Tile, Arbeitsweg, Verkehrslage, Fahrzeit (Apple Maps API / Transit API), Sandbox-fähig mit MKDirections (MapKit, keine privaten APIs)
-- Menüleistenaktionen
+- Menüleistenobjekte
+- Logs/Kommentare/Code reduzieren
+- Apple Maps / Vorschläge in der Umgebung
+- Commute / Drive Time Tile, Verkehrslage, Fahrzeit (Apple Maps API / Transit API)
 
 ## Features zum Debuggen
-- Debugging settings: Reload data button
-- Debugging settings: Fetch location
-- Last updated für Wetter
 
 ## Organisatorisch
 - Anfrage zum Bewerben auf MacRumors, 9to5,...
-- Release und App zum Download anbieten / Updateprozess einrichten / App automatisch bauen und release auf GitHub / GitHub Actions: einfachen Build-Job hinzufügen (macOS runner), ohne Secrets ins Log zu schreiben.
+- Release zum Download / Updateprozess / GitHub Actions: einfachen Build-Job hinzufügen (macOS runner)
 
 ## Bugs
 - Kurz vor/nach 0 Uhr werden Verbindung doppelt angezeigt/für den darauffolgenden Tag mit Ankunft in >= 1440 Minuten (also einem Tag) 
-- Wetter lädt beim Start oft nicht oder nur stark verzögert
-- Tag aktualisieren, wenn ein neuer Tag anbricht (Kalender, Erinnerungen)
+- Nach dem Löschen eines Kalenderereignisses, wird nichts mehr angezeigt
 
 ## KI-Zusammenfassung per Button:
 

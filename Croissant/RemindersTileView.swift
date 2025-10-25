@@ -171,6 +171,10 @@ struct RemindersTileView: View {
             // Reload reminders when Event Store changes (e.g., reminder saved/deleted in sheet or via context menu)
             manager.fetchReminders(for: selectedDate)
         }
+        // NEU: Bei Tageswechsel automatisch auf "Heute" zurücksetzen
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+            selectedDate = Calendar.current.startOfDay(for: Date())
+        }
         // Use sheet(item:) with our SheetContent enum
         .sheet(item: $activeSheet) { sheetContent in
             Group {
@@ -427,4 +431,3 @@ struct ReminderRow: View {
     return RemindersTileView(manager: manager) // Renamed the Preview call
         .frame(width: 400, height: 300) // Appropriate size for the tile preview
 }
-

@@ -164,7 +164,7 @@ struct ContentView: View {
     // NEU: AppStorage für die Scrollrichtung
     @AppStorage("tileScrollDirectionVertical") private var tileScrollDirectionVertical: Bool = false
     // Hintergrunddarstellung (für Settings vorbereitet)
-    @AppStorage("useTranslucentBackground") private var useTranslucentBackground: Bool = true
+    @AppStorage("useTranslucentBackground") private var useTranslucentBackground: Bool = false
 
     // @State für das mutable Array von TileType, das in der UI verwendet wird
     @State private var tileOrder: [TileType] = []
@@ -264,7 +264,7 @@ struct ContentView: View {
                     
                     // NEU: "Support the developer" Button
                     Button {
-                        if let url = URL(string: "https://www.buymeacoffee.com/frobotics") {
+                        if let url = URL(string: "https://www.buymeacoffee.com/frederik.m") {
                             openURL(url)
                         }
                     } label: {

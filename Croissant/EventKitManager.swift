@@ -10,6 +10,55 @@ import EventKit
 import SwiftUI
 import Combine
 
+// Helper struct to capture EKEvent properties for undo/redo
+struct EventSnapshot {
+    let identifier: String // Use identifier to find the event later
+    let title: String
+    let notes: String?
+    let location: String?
+    let isAllDay: Bool
+    let startDate: Date
+    let endDate: Date
+    let calendarIdentifier: String // Store calendar ID
+    // Add other relevant properties if needed (e.g., recurrence rules, alarms)
+
+    init(event: EKEvent) {
+        // For new events, identifier might be empty initially. It's assigned on save.
+        // We'll primarily use this for existing/deleted events.
+        self.identifier = event.calendarItemIdentifier
+        self.title = event.title
+        self.notes = event.notes
+        self.location = event.location
+        self.isAllDay = event.isAllDay
+        self.startDate = event.startDate ?? Date() // Fallback for safety
+        self.endDate = event.endDate ?? Date()     // Fallback for safety
+        self.calendarIdentifier = event.calendar?.calendarIdentifier ?? "" // Fallback for safety
+    }
+
+    // Applies this snapshot's data to an existing EKEvent
+    func apply(to event: EKEvent, eventStore: EKEventStore) {
+        event.title = self.title
+        event.notes = self.notes
+        event.location = self.location
+        event.isAllDay = self.isAllDay
+        event.startDate = self.startDate
+        event.endDate = self.endDate
+        
+        // Find the calendar by identifier. Fallback to default or first if not found.
+        if let calendar = eventStore.calendar(withIdentifier: self.calendarIdentifier) {
+            event.calendar = calendar
+        } else if let defaultCal = eventStore.defaultCalendarForNewEvents {
+            event.calendar = defaultCal
+            print("Warning: Original calendar not found for event \(event.title). Reverted to default calendar.")
+        } else if let firstCal = eventStore.calendars(for: .event).first {
+            event.calendar = firstCal
+            print("Warning: Original calendar not found for event \(event.title). Reverted to first available calendar.")
+        } else {
+            print("Error: No calendar found to apply event snapshot for \(event.title).")
+        }
+    }
+}
+
 class EventKitManager: ObservableObject {
     // Changed access level from 'private' to 'internal' for preview access.
     let eventStore = EKEventStore()
@@ -536,9 +585,137 @@ class EventKitManager: ObservableObject {
     }
 
     // MARK: - Event Management (NEW)
+    
+    // Reverts an event update to a previous snapshot state and registers redo
+    func revertEventUpdate(event: EKEvent, to snapshot: EventSnapshot, with undoManager: UndoManager?) {
+        guard eventsAccessGranted else { return }
 
-    // Saves a new or updated event
-    func saveEvent(_ event: EKEvent, in calendar: EKCalendar) throws {
+        // Capture current state for the redo operation
+        let currentStateSnapshot = EventSnapshot(event: event)
+
+        undoManager?.registerUndo(withTarget: self) { managerTarget in
+            // Redo: Apply the current state back
+            // The event instance itself might be stale, so fetch the latest.
+            if let latestEvent = self.eventStore.calendarItem(withIdentifier: event.calendarItemIdentifier) as? EKEvent {
+                managerTarget.revertEventUpdate(event: latestEvent, to: currentStateSnapshot, with: undoManager)
+            } else {
+                print("Error: Could not find event \(event.title) for redo update. Snapshot ID: \(event.calendarItemIdentifier)")
+            }
+        }
+        undoManager?.setActionName("Edit Event") // Set action name for redo (which is undoing this undo)
+
+        // Apply the snapshot's state to the event and save
+        snapshot.apply(to: event, eventStore: eventStore)
+        do {
+            try eventStore.save(event, span: .thisEvent, commit: true)
+            DispatchQueue.main.async {
+                // Fetch events for the date of the event, as its date might have changed.
+                self.fetchEvents(for: snapshot.startDate)
+                self.fetchEvents(for: currentStateSnapshot.startDate) // Also refresh the previous date
+            }
+        } catch {
+            print("Error reverting event update: \(error.localizedDescription)")
+        }
+    }
+
+    // Undoes the addition of a new event (deletes it)
+    func undoAddEvent(event: EKEvent, with undoManager: UndoManager?) {
+        guard eventsAccessGranted else { return }
+
+        // Register redo action: re-add the event
+        let eventSnapshot = EventSnapshot(event: event) // Snapshot contains the state to re-add
+        undoManager?.registerUndo(withTarget: self) { managerTarget in
+            managerTarget.redoAddEvent(eventSnapshot: eventSnapshot, with: undoManager)
+        }
+        undoManager?.setActionName("Add Event")
+
+        do {
+            try eventStore.remove(event, span: .thisEvent, commit: true)
+            DispatchQueue.main.async {
+                self.fetchEvents(for: event.startDate ?? Date())
+            }
+        } catch {
+            print("Error undoing add event: \(error.localizedDescription)")
+        }
+    }
+    
+    // Redoes the addition of an event (adds it back)
+    func redoAddEvent(eventSnapshot: EventSnapshot, with undoManager: UndoManager?) {
+        guard eventsAccessGranted else { return }
+
+        // Create a new EKEvent and apply the snapshot
+        let newEvent = EKEvent(eventStore: eventStore)
+        eventSnapshot.apply(to: newEvent, eventStore: eventStore)
+
+        // Register undo action: remove the re-added event
+        undoManager?.registerUndo(withTarget: self) { managerTarget in
+            managerTarget.undoAddEvent(event: newEvent, with: undoManager)
+        }
+        undoManager?.setActionName("Add Event")
+
+        do {
+            try eventStore.save(newEvent, span: .thisEvent, commit: true)
+            DispatchQueue.main.async {
+                self.fetchEvents(for: newEvent.startDate ?? Date())
+            }
+        } catch {
+            print("Error redoing add event: \(error.localizedDescription)")
+        }
+    }
+
+    // Undoes the deletion of an event (re-adds it)
+    func undoDeleteEvent(eventSnapshot: EventSnapshot, with undoManager: UndoManager?) {
+        guard eventsAccessGranted else { return }
+
+        // Register redo action: re-delete the event
+        undoManager?.registerUndo(withTarget: self) { managerTarget in
+            managerTarget.redoDeleteEvent(eventSnapshot: eventSnapshot, with: undoManager)
+        }
+        undoManager?.setActionName("Delete Event")
+
+        // Recreate event from snapshot and save
+        let newEvent = EKEvent(eventStore: eventStore)
+        eventSnapshot.apply(to: newEvent, eventStore: eventStore)
+        
+        do {
+            try eventStore.save(newEvent, span: .thisEvent, commit: true)
+            DispatchQueue.main.async {
+                self.fetchEvents(for: newEvent.startDate ?? Date())
+            }
+        } catch {
+            print("Error undoing delete event: \(error.localizedDescription)")
+        }
+    }
+
+    // Redoes the deletion of an event (deletes it again)
+    func redoDeleteEvent(eventSnapshot: EventSnapshot, with undoManager: UndoManager?) {
+        guard eventsAccessGranted else { return }
+
+        // Register undo action: re-add the event
+        undoManager?.registerUndo(withTarget: self) { managerTarget in
+            managerTarget.undoDeleteEvent(eventSnapshot: eventSnapshot, with: undoManager)
+        }
+        undoManager?.setActionName("Delete Event")
+
+        // Find the event by identifier if possible.
+        if let eventToDelete = eventStore.calendarItem(withIdentifier: eventSnapshot.identifier) as? EKEvent {
+            do {
+                try eventStore.remove(eventToDelete, span: .thisEvent, commit: true)
+                DispatchQueue.main.async {
+                    self.fetchEvents(for: eventToDelete.startDate ?? Date())
+                }
+            } catch {
+                print("Error redoing delete event: \(error.localizedDescription)")
+            }
+        } else {
+            print("Error: Could not find event with identifier \(eventSnapshot.identifier) to redo deletion. It might have been deleted externally.")
+            // If the event isn't found, it's likely already gone from the store. Just refresh the view.
+            DispatchQueue.main.async { self.fetchEvents(for: eventSnapshot.startDate) }
+        }
+    }
+
+    // Saves a new or updated event, now accepting an UndoManager
+    func saveEvent(_ event: EKEvent, in calendar: EKCalendar, with undoManager: UndoManager?) throws {
         guard eventsAccessGranted else {
             throw EventKitError.accessDenied
         }
@@ -547,31 +724,49 @@ class EventKitManager: ObservableObject {
         if event.calendar != calendar {
             event.calendar = calendar
         }
+        
+        // --- UNDO REGISTRATION ---
+        if event.calendarItemIdentifier.isEmpty { // It's a new event (identifier is empty before first save)
+            // Register undo to delete this new event
+            undoManager?.registerUndo(withTarget: self) { managerTarget in
+                managerTarget.undoAddEvent(event: event, with: undoManager) // Pass the event just added
+            }
+            undoManager?.setActionName("Add Event")
+        } else { // It's an existing event being updated
+            // Capture the current state *before* modifications are saved
+            let originalSnapshot = EventSnapshot(event: event)
+            undoManager?.registerUndo(withTarget: self) { managerTarget in
+                managerTarget.revertEventUpdate(event: event, to: originalSnapshot, with: undoManager)
+            }
+            undoManager?.setActionName("Edit Event")
+        }
+        // --- END UNDO REGISTRATION ---
 
-        // Saving an EKEvent uses `save(event, span:)`
-        // EKEventStore.save(_:span:) is for events.
-        // EKSpan.thisEvent for single event, .futureEvents for recurring series.
-        // For simplicity, we'll assume single events for now.
         try eventStore.save(event, span: .thisEvent, commit: true)
 
         DispatchQueue.main.async {
-            // After saving, refresh events for the currently selected date.
-            // Using Date() as a fallback, but CalendarTileView should trigger fetchEvents(for: selectedDate)
-            self.fetchEvents(for: event.startDate ?? Date()) 
+            self.fetchEvents(for: event.startDate ?? Date())
         }
     }
 
-    // Deletes an event
-    func deleteEvent(_ event: EKEvent) throws {
+    // Deletes an event, now accepting an UndoManager
+    func deleteEvent(_ event: EKEvent, with undoManager: UndoManager?) throws {
         guard eventsAccessGranted else {
             throw EventKitError.accessDenied
         }
-        // EKEventStore.remove(_:span:) is for events.
+
+        // --- UNDO REGISTRATION ---
+        // Capture the event's state *before* deletion
+        let eventSnapshot = EventSnapshot(event: event)
+        undoManager?.registerUndo(withTarget: self) { managerTarget in
+            managerTarget.undoDeleteEvent(eventSnapshot: eventSnapshot, with: undoManager)
+        }
+        undoManager?.setActionName("Delete Event")
+        // --- END UNDO REGISTRATION ---
+
         try eventStore.remove(event, span: .thisEvent, commit: true)
 
         DispatchQueue.main.async {
-            // After deleting, refresh events for the currently selected date.
-            // Using Date() as a fallback, but CalendarTileView should trigger fetchEvents(for: selectedDate)
             self.fetchEvents(for: event.startDate ?? Date())
         }
     }

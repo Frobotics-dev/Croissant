@@ -2,7 +2,7 @@ import SwiftUI
 
 struct NewsTileView: View {
     @ObservedObject var viewModel: NewsFeedViewModel
-    @AppStorage("enableNewsScrollEffect") private var enableNewsScrollEffect: Bool = true
+    @AppStorage("enableNewsScrollEffect") private var enableNewsScrollEffect: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

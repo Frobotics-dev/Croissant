@@ -35,6 +35,7 @@ struct CalendarTileView: View {
     @ObservedObject var manager: EventKitManager
     @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
     @State private var activeSheet: SheetContent? = nil // New state to manage sheet content
+    @Environment(\.undoManager) var undoManager: UndoManager? // Inject UndoManager
 
     private var eventsForSelectedDate: [EKEvent] {
         let cal = Calendar.current
@@ -173,17 +174,21 @@ struct CalendarTileView: View {
             // Reload events when Event Store changes (e.g., event saved/deleted in sheet or via context menu)
             manager.fetchEvents(for: selectedDate)
         }
+        // NEU: Bei Tageswechsel automatisch auf "Heute" zurücksetzen
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in
+            selectedDate = Calendar.current.startOfDay(for: Date())
+        }
         // Use sheet(item:) with our SheetContent enum (NEW)
         .sheet(item: $activeSheet) { sheetContent in
-            Group {
+            Group { // Re-added Group here
                 switch sheetContent {
                 case .newEvent:
                     EventEditView(eventKitManager: manager, eventToEdit: nil)
                 case .editEvent(let event):
                     EventEditView(eventKitManager: manager, eventToEdit: event)
                 }
-            }
-            .frame(minWidth: 400, minHeight: 600) // Minimum size for the sheet window
+            } // Close Group here
+            .frame(minWidth: 400, minHeight: 600) // Now applied to the Group's content
         }
         // ADDED: Plus button moved to bottom-right overlay
         .overlay(alignment: .bottomTrailing) {
@@ -205,7 +210,7 @@ struct CalendarTileView: View {
 
     private func deleteEvent(_ event: EKEvent) {
         do {
-            try manager.deleteEvent(event)
+            try manager.deleteEvent(event, with: undoManager) // Pass undoManager here
         } catch {
             print("Failed to delete event from context menu: \(error.localizedDescription)")
             // Optionally, set an error message in the manager or a local state here

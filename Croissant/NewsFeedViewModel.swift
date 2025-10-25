@@ -104,8 +104,8 @@ class NewsFeedViewModel: NSObject, ObservableObject {
 
 
     // MARK: - RSS Feed URL Management
-    // New default value: ZDF heute
-    let defaultFeedURLString = RSSFeedConstants.allFeeds["ZDF heute"]!
+    // New default value: BBC Top Stories
+    let defaultFeedURLString = RSSFeedConstants.allFeeds["BBC Top Stories"]!
 
     @Published var feedURLString: String {
         didSet {

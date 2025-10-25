@@ -178,7 +178,7 @@ private struct GeneralSettingsView: View {
 private struct AppearanceSettingsView: View {
     @AppStorage("enableTileHoverEffect") private var enableTileHoverEffect: Bool = true
     @AppStorage("tileScrollDirectionVertical") private var tileScrollDirectionVertical: Bool = false // NEU: Einstellung für Scrollrichtung
-    @AppStorage("useTranslucentBackground") private var useTranslucentBackground: Bool = true // Fensterhintergrund: transluzent vs. opak
+    @AppStorage("useTranslucentBackground") private var useTranslucentBackground: Bool = false // Fensterhintergrund: transluzent vs. opak
 
     var body: some View {
         Form {
@@ -271,7 +271,7 @@ private struct CalendarsAndRemindersSettingsView: View {
 // MARK: - Sub-view for News
 private struct NewsSettingsView: View {
     @ObservedObject var newsFeedViewModel: NewsFeedViewModel
-    @AppStorage("enableNewsScrollEffect") private var enableNewsScrollEffect: Bool = true
+    @AppStorage("enableNewsScrollEffect") private var enableNewsScrollEffect: Bool = false
     
     var body: some View {
         Form {
@@ -630,7 +630,7 @@ private struct AboutSettingsView: View {
 
                 HStack {
                     Spacer()
-                    Link(destination: URL(string: "mailto:frobotics@freenet.de?subject=Feedback%20to%20your%20App%20%22Croissaint%22&body=Hi%20Frederik%2C")!) {
+                    Link(destination: URL(string: "mailto:frobotics@freenet.de?subject=Feedback%20to%20your%20app%20%22Croissaint%22&body=Hi%20Frederik%2C")!) {
                         Label("Send Feedback", systemImage: "envelope.fill")
                     }
                     .buttonStyle(.bordered)

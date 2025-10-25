@@ -11,6 +11,7 @@ import EventKit
 struct EventEditView: View {
     @Environment(\.dismiss) var dismiss
     @ObservedObject var eventKitManager: EventKitManager
+    @Environment(\.undoManager) var undoManager: UndoManager? // Inject UndoManager
 
     // Consistent trailing control width for right column
     private let trailingControlWidth: CGFloat = 220
@@ -353,9 +354,12 @@ struct EventEditView: View {
             event.isAllDay = isAllDay
             event.startDate = startDate
             event.endDate = endDate
-            event.calendar = targetCalendar
+            // The calendar property is set inside saveEvent, but event.calendar needs to be set
+            // so EventKitManager can correctly determine the original calendar for new events.
+            event.calendar = targetCalendar 
             
-            try eventKitManager.saveEvent(event, in: targetCalendar)
+            // Pass the undoManager to EventKitManager's saveEvent
+            try eventKitManager.saveEvent(event, in: targetCalendar, with: undoManager)
             dismiss()
         } catch {
             errorMessage = "Save failed: \(error.localizedDescription)"
@@ -365,10 +369,12 @@ struct EventEditView: View {
     private func deleteEvent() {
         guard let event = eventToEdit else { return }
         do {
-            try eventKitManager.deleteEvent(event)
+            // Pass the undoManager to EventKitManager's deleteEvent
+            try eventKitManager.deleteEvent(event, with: undoManager)
             dismiss()
         } catch {
             errorMessage = "Delete failed: \(error.localizedDescription)"
         }
     }
 }
+
