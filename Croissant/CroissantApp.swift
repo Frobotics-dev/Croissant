@@ -21,6 +21,9 @@ struct CroissantApp: App {
     // NEU: Transit View Model, benötigt den Location Manager
     @StateObject private var transitViewModel: TransitViewModel
     
+    // NEU: Weather View Model
+    @StateObject private var weatherViewModel = WeatherViewModel()
+    
     init() {
         // Initialisiere den Location Manager
         let locManager = LocationManager()
@@ -41,7 +44,8 @@ struct CroissantApp: App {
                 eventKitManager: eventKitManager,
                 newsFeedViewModel: newsFeedViewModel,
                 locationManager: locationManager,
-                transitViewModel: transitViewModel
+                transitViewModel: transitViewModel,
+                weatherViewModel: weatherViewModel
             )
             .onAppear {
                 // Stelle sicher, dass beim Start eine Standortabfrage erfolgt
@@ -55,12 +59,8 @@ struct CroissantApp: App {
                 lastRoundedCoord = (lat, lon)
 
                 Task {
-                    do {
-                        let r = try await WeatherManager.shared.fetchForecast(lat: lat, lon: lon, days: 3, includeAlerts: true)
-                        WeatherManager.shared.logToday(r)
-                    } catch {
-                        print("Weather error 1:", error.localizedDescription)
-                    }
+                    // Verwende das zentrale weatherViewModel zum Laden, um den Status zu aktualisieren
+                    await weatherViewModel.load(lat: lat, lon: lon)
                 }
             }
         }
@@ -75,7 +75,8 @@ struct CroissantApp: App {
                 eventKitManager: eventKitManager, 
                 newsFeedViewModel: newsFeedViewModel,
                 locationManager: locationManager,
-                transitViewModel: transitViewModel
+                transitViewModel: transitViewModel,
+                weatherViewModel: weatherViewModel // NEU
             )
         }
         .defaultSize(width: 500, height: 600)

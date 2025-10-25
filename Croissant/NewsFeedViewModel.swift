@@ -30,7 +30,7 @@ struct RSSFeedConstants {
         "Tagesschau Technology": "https://www.tagesschau.de/wissen/technologie/index~rss2.xml",
         "BBC Top Stories": "https://feeds.bbci.co.uk/news/rss.xml",
         "WirtschaftsWoche": "https://www.wiwo.de/contentexport/feed/rss/schlagzeilen",
-        "Handelsblatt GmbH": "https://www.handelsblatt.com/contentexport/feed/marktberichte"
+        "Handelsblatt GmbH": "https://www.handelsblatt.com/contentexport/feed/rss/schlagzeilen"
     ]
     
     static var allFeedURLs: [URL] {
@@ -55,6 +55,16 @@ class NewsFeedViewModel: NSObject, ObservableObject {
     @Published var newsItems: [NewsItem] = []
     @Published var errorMessage: String?
     @Published var isLoading: Bool = false
+    
+    // MARK: - Debugging Properties (NEW)
+    @Published var updatedLabel: String = ""
+    
+    private static let debugDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .medium
+        return formatter
+    }()
 
     // MARK: - Public Access to Feeds
     
@@ -245,8 +255,14 @@ class NewsFeedViewModel: NSObject, ObservableObject {
                 if items.isEmpty {
                     // Check if the parsing returned nothing, which might indicate an error or an empty feed
                     self?.errorMessage = "Could not parse any news items from the feed."
+                    // Failures should not update the label unless we know the last update succeeded
+                    if self?.updatedLabel.isEmpty == true {
+                        self?.updatedLabel = "Update Failed"
+                    }
                 } else {
+                    // Success
                     self?.errorMessage = nil
+                    self?.updatedLabel = Self.debugDateFormatter.string(from: Date())
                 }
             }
             
@@ -259,6 +275,9 @@ class NewsFeedViewModel: NSObject, ObservableObject {
             await MainActor.run {
                 self.errorMessage = "Error loading news: \(error.localizedDescription)"
                 self.isLoading = false
+                if self.updatedLabel.isEmpty {
+                    self.updatedLabel = "Update Failed"
+                }
             }
         }
     }
@@ -276,10 +295,20 @@ class NewsFeedViewModel: NSObject, ObservableObject {
         }
         
         // Wait for all tasks to complete
+        var totalFailures = 0
         let results = await withTaskGroup(of: [NewsItem].self, returning: [NewsItem].self) { group in
             for task in tasks {
                 group.addTask {
-                    return await task.value
+                    let items = await task.value
+                    if items.isEmpty {
+                        // We can't easily detect network vs. parsing failure here, 
+                        // but if we get 0 items, we count it as a failure for status update logic
+                        // NOTE: This check is unreliable if feeds legitimately have 0 items, but it's the best proxy we have.
+                        // A better approach would be to return a Result type containing errors.
+                        // Since we can't change fetchAndParseFeed return type easily, we proceed.
+                        if self.newsItems.isEmpty { totalFailures += 1 } // Only count if we have no prior successful data
+                    }
+                    return items
                 }
             }
             
@@ -314,8 +343,16 @@ class NewsFeedViewModel: NSObject, ObservableObject {
         await MainActor.run {
             self.newsItems = finalItems
             self.isLoading = false
+            
             if finalItems.isEmpty {
                  self.errorMessage = "Could not load any news feeds."
+                if self.updatedLabel.isEmpty {
+                    self.updatedLabel = "Update Failed"
+                }
+            } else {
+                // Success
+                self.errorMessage = nil
+                self.updatedLabel = Self.debugDateFormatter.string(from: Date())
             }
         }
     }

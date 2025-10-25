@@ -72,13 +72,6 @@ struct TransitTileView: View {
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                     Spacer()
-                    // Zeige den Zeitstempel nur an, wenn der Debug-Modus aktiviert ist
-                    if isDebuggingEnabled {
-                        Text(viewModel.updatedLabel)
-                            .foregroundColor(.secondary)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                    }
                 }
             } else if locationManager.isLoading {
                 Text("Fetching location…")
@@ -246,3 +239,4 @@ private struct DepartureRow: View {
         }
     }
 }
+

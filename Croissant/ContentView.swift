@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  Dashboard
-//
-//  Created by Frederik Mondel on 15.10.25.
-//
-
 import SwiftUI
 import EventKit
 import UniformTypeIdentifiers // Import for UTType.text
@@ -25,14 +18,15 @@ enum TileType: String, CaseIterable, Identifiable, Equatable {
 
     @ViewBuilder
     // Alle Abhängigkeiten müssen hier als Parameter hinzugefügt werden
-    func view(eventKitManager: EventKitManager, newsFeedViewModel: NewsFeedViewModel, locationManager: LocationManager, transitViewModel: TransitViewModel, systemInfoManager: SystemInfoManager) -> some View {
+    // ADDED weatherViewModel parameter
+    func view(eventKitManager: EventKitManager, newsFeedViewModel: NewsFeedViewModel, locationManager: LocationManager, transitViewModel: TransitViewModel, weatherViewModel: WeatherViewModel, systemInfoManager: SystemInfoManager) -> some View {
         switch self {
         case .reminders:
             RemindersTileView(manager: eventKitManager)
         case .calendar:
             CalendarTileView(manager: eventKitManager)
         case .weather:
-            WeatherTileView()
+            WeatherTileView(viewModel: weatherViewModel, locationManager: locationManager) // ZUSÄTZLICH locationManager übergeben
         case .news:
             NewsTileView(viewModel: newsFeedViewModel)
         case .systemInfo:
@@ -47,6 +41,9 @@ enum TileType: String, CaseIterable, Identifiable, Equatable {
 // MARK: - TileReorderDropDelegate
 // Ein benutzerdefinierter DropDelegate, um die Kachelreihenfolge zu handhaben.
 struct TileReorderDropDelegate: DropDelegate {
+// ... (omitted for brevity, assume unchanged)
+// [Original content of TileReorderDropDelegate structure]
+
     @Binding var tileOrder: [TileType]
     @Binding var draggingTile: TileType?
     @Binding var dropTargetIndex: Int?
@@ -152,6 +149,9 @@ struct ContentView: View {
     // NEU: Transit Abhängigkeiten
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var transitViewModel: TransitViewModel
+    
+    // ADDED: Weather ViewModel dependency
+    @ObservedObject var weatherViewModel: WeatherViewModel
 
     // NEU: SystemInfoManager für Batteriestatus
     @StateObject private var systemInfoManager = SystemInfoManager()
@@ -204,12 +204,13 @@ struct ContentView: View {
         self.tileOrder = parsedTiles
     }
 
-    init(eventKitManager: EventKitManager, newsFeedViewModel: NewsFeedViewModel, locationManager: LocationManager, transitViewModel: TransitViewModel) {
+    init(eventKitManager: EventKitManager, newsFeedViewModel: NewsFeedViewModel, locationManager: LocationManager, transitViewModel: TransitViewModel, weatherViewModel: WeatherViewModel) {
         self.eventKitManager = eventKitManager
         self.newsFeedViewModel = newsFeedViewModel
         self.locationManager = locationManager // NEU
         self.transitViewModel = transitViewModel // NEU
-        
+        self.weatherViewModel = weatherViewModel // ADDED
+
         // Berechne den Standard-Reihenfolgen-String
         let defaultOrderString = TileType.allCases.map(\.rawValue).joined(separator: ",")
 
@@ -367,7 +368,8 @@ struct ContentView: View {
                                     dropTargetIndex: $dropTargetIndex,
                                     isEditing: $isEditing, // Changed from `isEditing` to `$isEditing`
                                     animationNamespace: animationNamespace,
-                                    dependencies: (eventKitManager, newsFeedViewModel, locationManager, transitViewModel, systemInfoManager)
+                                    // ADDED weatherViewModel to dependencies tuple
+                                    dependencies: (eventKitManager, newsFeedViewModel, locationManager, transitViewModel, weatherViewModel, systemInfoManager)
                                 )
                             }
                             .padding(.horizontal, gridSpacing)
@@ -405,7 +407,8 @@ struct ContentView: View {
                                     dropTargetIndex: $dropTargetIndex,
                                     isEditing: $isEditing, // Changed from `isEditing` to `$isEditing`
                                     animationNamespace: animationNamespace,
-                                    dependencies: (eventKitManager, newsFeedViewModel, locationManager, transitViewModel, systemInfoManager)
+                                    // ADDED weatherViewModel to dependencies tuple
+                                    dependencies: (eventKitManager, newsFeedViewModel, locationManager, transitViewModel, weatherViewModel, systemInfoManager)
                                 )
                             }
                             .padding(.horizontal, gridSpacing)
@@ -496,7 +499,9 @@ private struct ForEachTile: View {
     @Binding var dropTargetIndex: Int?
     @Binding var isEditing: Bool // Changed from `let isEditing: Bool` to `@Binding var isEditing: Bool`
     let animationNamespace: Namespace.ID
-    let dependencies: (EventKitManager, NewsFeedViewModel, LocationManager, TransitViewModel, SystemInfoManager)
+    // UPDATED dependencies tuple signature
+    typealias Dependencies = (EventKitManager, NewsFeedViewModel, LocationManager, TransitViewModel, WeatherViewModel, SystemInfoManager)
+    let dependencies: Dependencies
     
     let fixedTileWidth: CGFloat = 370
     let fixedTileHeight: CGFloat = 270
@@ -526,7 +531,8 @@ private struct ForEachTile: View {
                     newsFeedViewModel: dependencies.1,
                     locationManager: dependencies.2,
                     transitViewModel: dependencies.3,
-                    systemInfoManager: dependencies.4
+                    weatherViewModel: dependencies.4, // PASS WeatherViewModel
+                    systemInfoManager: dependencies.5
                 )), isEditing: $isEditing)
                 .matchedGeometryEffect(id: tileType.id, in: animationNamespace)
                 .zIndex(draggingTile == tileType ? 1000 : 0)
@@ -552,6 +558,9 @@ extension Array {
 
 // Ein View, der einen konsistenten Stil für alle Kacheln gewährleistet und den Hover-Effekt handhabt.
 struct DashboardTileView: View {
+// ... (omitted for brevity, assume unchanged)
+// [Original content of DashboardTileView struct]
+
     let content: AnyView
     let fixedWidth: CGFloat = 370
     let fixedHeight: CGFloat = 270
@@ -612,6 +621,9 @@ struct DashboardTileView: View {
 
 // MARK: - Tahoe-like toolbar button style
 struct TahoeToolbarButtonStyle: ButtonStyle {
+// ... (omitted for brevity, assume unchanged)
+// [Original content of TahoeToolbarButtonStyle struct]
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.title2) // Icon-Größe angepasst für bessere Lesbarkeit
@@ -636,6 +648,9 @@ struct TahoeToolbarButtonStyle: ButtonStyle {
 
 // MARK: - Titlebar Banner View
 struct TitlebarBannerView: View {
+// ... (omitted for brevity, assume unchanged)
+// [Original content of TitlebarBannerView struct]
+
     var body: some View {
         Text("Croissant: Your Daily Essential.")
             .font(.callout)
@@ -655,6 +670,9 @@ struct TitlebarBannerView: View {
 
 // MARK: - VisualEffectView (AppKit bridge)
 struct VisualEffectView: NSViewRepresentable {
+// ... (omitted for brevity, assume unchanged)
+// [Original content of VisualEffectView struct]
+
     let material: NSVisualEffectView.Material
     let blendingMode: NSVisualEffectView.BlendingMode
     let state: NSVisualEffectView.State
@@ -677,6 +695,9 @@ struct VisualEffectView: NSViewRepresentable {
 
 // MARK: - WindowConfigurator (round corners + modern chrome)
 struct WindowConfigurator: ViewModifier {
+// ... (omitted for brevity, assume unchanged)
+// [Original content of WindowConfigurator struct]
+
     func body(content: Content) -> some View {
         content.overlay(WindowAccessor { window in
             guard let window = window else { return }
@@ -705,6 +726,9 @@ struct WindowConfigurator: ViewModifier {
 
 // MARK: - WindowAccessor
 private struct WindowAccessor: NSViewRepresentable {
+// ... (omitted for brevity, assume unchanged)
+// [Original content of WindowAccessor struct]
+
     let onResolve: (NSWindow?) -> Void
 
     func makeNSView(context: Context) -> NSView {
@@ -733,16 +757,22 @@ private struct WindowAccessor: NSViewRepresentable {
     }
 }
 
+
 #Preview {
+// ... (omitted for brevity, assume unchanged)
+// [Original content of #Preview block]
+
     // Dummy-Instanzen für die Vorschau
     let locationManager = LocationManager()
     let transitViewModel = TransitViewModel(locationManager: locationManager)
+    let weatherViewModel = WeatherViewModel()
     
     ContentView(
         eventKitManager: EventKitManager(),
         newsFeedViewModel: NewsFeedViewModel(),
         locationManager: locationManager,
-        transitViewModel: transitViewModel
+        transitViewModel: transitViewModel,
+        weatherViewModel: weatherViewModel
     )
         .frame(width: 900, height: 700)
 }

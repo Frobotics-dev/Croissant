@@ -3,6 +3,7 @@ import EventKit
 import AppKit
 import CoreLocation // Needed for CLAuthorizationStatus
 import OSLog
+import Combine // Required for explicit subscription logic
 
 // Enum to define the different tabs for clean navigation
 private enum SettingsTab: Hashable {
@@ -24,6 +25,7 @@ struct SettingsView: View {
     @ObservedObject var newsFeedViewModel: NewsFeedViewModel
     @ObservedObject var locationManager: LocationManager
     @ObservedObject var transitViewModel: TransitViewModel
+    @ObservedObject var weatherViewModel: WeatherViewModel // NEW DEPENDENCY
     
     // AppStorage for tile order
     @AppStorage("tileOrder") private var storedTileOrderString: String = ""
@@ -61,7 +63,7 @@ struct SettingsView: View {
             // Removed TransitSettingsView tab item
             
             // Tab 5: Debugging (now includes Transit Search Radius and Location)
-            DebuggingSettingsView(transitViewModel: transitViewModel, locationManager: locationManager) // Pass locationManager here
+            DebuggingSettingsView(transitViewModel: transitViewModel, locationManager: locationManager, weatherViewModel: weatherViewModel, newsFeedViewModel: newsFeedViewModel) // Pass newsFeedViewModel here
                 .tabItem {
                     Label("Debugging", systemImage: "ladybug")
                 }
@@ -307,18 +309,173 @@ private struct DebuggingSettingsView: View {
     @AppStorage("isDebuggingEnabled") private var isDebuggingEnabled: Bool = false
     @ObservedObject var transitViewModel: TransitViewModel // Injected to access searchRadiusMeters
     @ObservedObject var locationManager: LocationManager // Injected for location settings
+    @ObservedObject var weatherViewModel: WeatherViewModel // Injected for weather status
+    @ObservedObject var newsFeedViewModel: NewsFeedViewModel // NEW DEPENDENCY
     @State private var isComputingDownloads: Bool = false
     @State private var totalReleaseDownloads: Int?
     @State private var downloadsError: String?
     private let logger = Logger(subsystem: "Croissant", category: "GitHubAnalytics")
+    
+    @State private var isReloadingData: Bool = false // State for the reload button
+    
+    // Cancellable to hold the temporary location subscription
+    @State private var locationCancellable: AnyCancellable?
+
+    private func reloadAllData() {
+        guard !isReloadingData else { return }
+        isReloadingData = true
+        
+        // 1. Trigger News Feed immediately (not dependent on location)
+        newsFeedViewModel.fetchNews()
+        
+        // --- Strategy: Request fresh location, wait for it, then trigger Weather/Transit ---
+        
+        // Stop any previous temporary subscription
+        locationCancellable?.cancel()
+        
+        // 1. Request fresh location (synchronous call, starts CL update process)
+        // This will trigger the subscriptions in Weather/Transit, but we will also call them
+        // explicitly to ensure a refresh even if the location hasn't changed.
+        locationManager.requestLocation()
+        
+        // Capture self strongly inside the sink closure (since DebuggingSettingsView is a struct)
+        // and capture a copy of current state variables if needed.
+        let captureSelf = self
+        
+        // 2. Wait for the new location to be published once
+        locationCancellable = locationManager.$currentLocation
+            .compactMap { $0 }
+            .first() // Takes the first value emitted after subscription
+            .sink { loc in
+                
+                // Location received successfully. Now trigger data fetches using this location.
+                Task { @MainActor in
+                    // Trigger Weather load explicitly
+                    // This bypasses any coordinate deduping/rounding logic in CroissantApp.swift, 
+                    // guaranteeing a weather refresh using the new location.
+                    await captureSelf.weatherViewModel.load(lat: loc.latitude, lon: loc.longitude)
+                    
+                    // Trigger Transit load explicitly to bypass its internal distance-based debouncing
+                    captureSelf.transitViewModel.fetchNearbyStops(lat: loc.latitude, lon: loc.longitude)
+                    
+                    // After dependent tasks are initiated, mark reloading as false.
+                    captureSelf.isReloadingData = false
+                    // Dispose of the temporary subscription
+                    captureSelf.locationCancellable?.cancel()
+                    captureSelf.locationCancellable = nil
+                }
+            }
+        
+        // Safety net: If location doesn't arrive within 5 seconds (e.g., permissions issue), stop loading state.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            guard captureSelf.isReloadingData else { return }
+            
+            // If we are still loading, it means the location subscription never fired.
+            // Explicitly run the refresh using the last known location if available, and then stop loading.
+            if let loc = captureSelf.locationManager.currentLocation {
+                Task { @MainActor in
+                    await captureSelf.weatherViewModel.load(lat: loc.latitude, lon: loc.longitude)
+                    // Also trigger Transit explicitly in the fallback
+                    captureSelf.transitViewModel.fetchNearbyStops(lat: loc.latitude, lon: loc.longitude)
+                    
+                    captureSelf.isReloadingData = false
+                    captureSelf.locationCancellable?.cancel()
+                    captureSelf.locationCancellable = nil
+                }
+            } else {
+                // No location, just stop loading and let the error messages remain.
+                Task { @MainActor in
+                    captureSelf.isReloadingData = false
+                    captureSelf.locationCancellable?.cancel()
+                    captureSelf.locationCancellable = nil
+                }
+            }
+        }
+    }
+
 
     var body: some View {
         Form {
             Section(header: Text("Developer").font(.title2)) {
                 Toggle("Enable Debugging Mode", isOn: $isDebuggingEnabled)
-                Text("Shows additional information in the UI, such as API update timestamps in the transit tile.")
+                Text("Shows additional information for developers. API status indicators are displayed below when enabled.")
                     .font(.caption)
                     .foregroundColor(.secondary)
+                
+                // NEW: Reload views button
+                Button(action: reloadAllData) {
+                    if isReloadingData {
+                        HStack {
+                            ProgressView()
+                            Text("Reloading data...")
+                        }
+                    } else {
+                        Label("Reload views", systemImage: "arrow.clockwise")
+                    }
+                }
+                .disabled(isReloadingData)
+                .padding(.top, 4)
+                
+                if isDebuggingEnabled {
+                    // Transit Debug Status
+                    HStack {
+                        Image(systemName: "tram.fill")
+                            .foregroundColor(.secondary)
+                        // NOTE: If transitViewModel.updatedLabel is not updating here, 
+                        // the fix is external (in TransitViewModel.swift or CroissantApp.swift's Combine pipeline).
+                        Text("Transit Update: \(transitViewModel.updatedLabel.isEmpty ? "No successful updates yet." : transitViewModel.updatedLabel)")
+                            .foregroundColor(.secondary)
+                            .monospacedDigit()
+                        Spacer()
+                        if let err = transitViewModel.errorMessage, !err.isEmpty {
+                            // Try to extract an HTTP status code like 503 from the message; otherwise show the message compactly
+                            let code = err.split(separator: " ")
+                                .first(where: { Int($0) != nil })
+                            Text(code.map { "HTTP \($0)" } ?? String(err.prefix(24)))
+                                .foregroundColor(.red)
+                                .font(.caption)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    }
+                    
+                    // Weather Debug Status
+                    HStack {
+                        Image(systemName: "cloud.sun.fill")
+                            .foregroundColor(.secondary)
+                        Text("Weather Update: \(weatherViewModel.updatedLabel.isEmpty ? "No successful updates yet." : weatherViewModel.updatedLabel)")
+                            .foregroundColor(.secondary)
+                            .monospacedDigit()
+                        Spacer()
+                        if let err = weatherViewModel.errorMessage, !err.isEmpty {
+                            // Display error message prefix
+                            Text(String(err.prefix(24)))
+                                .foregroundColor(.red)
+                                .font(.caption)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    }
+                    
+                    // News Feed Debug Status
+                    HStack {
+                        Image(systemName: "newspaper.fill")
+                            .foregroundColor(.secondary)
+                        Text("News Update: \(newsFeedViewModel.updatedLabel.isEmpty ? "No successful updates yet." : newsFeedViewModel.updatedLabel)")
+                            .foregroundColor(.secondary)
+                            .monospacedDigit()
+                        Spacer()
+                        if let err = newsFeedViewModel.errorMessage, !err.isEmpty {
+                            // Display error message prefix
+                            Text(String(err.prefix(24)))
+                                .foregroundColor(.red)
+                                .font(.caption)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    }
+                }
+                
             }
             Section(header: Text("Transit Debugging").font(.title2)) {
                 VStack(alignment: .leading) {
@@ -385,6 +542,10 @@ private struct DebuggingSettingsView: View {
         .formStyle(.grouped)
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
+        .onDisappear {
+            // Clean up temporary subscription if the view disappears
+            locationCancellable?.cancel()
+        }
     }
 
     private func fetchTotalReleaseDownloads() async {
@@ -622,7 +783,8 @@ extension EventKitManager {
 }
 
 extension LocationManager {
-    var authorizationStatusString: String {
+    // Explicitly declaring 'internal' to resolve potential scoping issues reported by the compiler.
+    internal var authorizationStatusString: String {
         authorizationStatus?.stringValue ?? "Not Determined"
     }
 }

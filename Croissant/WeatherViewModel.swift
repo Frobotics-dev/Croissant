@@ -19,6 +19,22 @@ final class WeatherViewModel: ObservableObject {
     @Published var todayHumidity: String = "–%"
     @Published var moonPercent: String = "–%"
     @Published var moonSymbol: String = "moon"
+    
+    // MARK: - Debugging Properties (NEW)
+    @Published var updatedLabel: String = ""
+    @Published var errorMessage: String? = nil
+    
+    private static let debugDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .none
+        formatter.timeStyle = .medium
+        return formatter
+    }()
+    
+    // Computed property to match TransitVM's new implementation (time string only)
+    var debugUpdatedLabel: String {
+        return self.updatedLabel
+    }
 
     @Published var daily: [DailyItem] = [] // next 3 days
 
@@ -45,8 +61,18 @@ final class WeatherViewModel: ObservableObject {
         do {
             let response = try await WeatherManager.shared.fetchForecast(lat: lat, lon: lon, days: 3, includeAlerts: true)
             apply(response)
+            
+            // Update debug status on success
+            self.errorMessage = nil
+            self.updatedLabel = Self.debugDateFormatter.string(from: Date()) // Time string only
+            
         } catch {
             print("WeatherViewModel.load error:", error.localizedDescription)
+            self.errorMessage = error.localizedDescription
+            // If this is the first failure, set updatedLabel to reflect it
+            if self.updatedLabel.isEmpty || self.updatedLabel == "Update Failed" {
+                self.updatedLabel = "Update Failed"
+            }
         }
     }
 

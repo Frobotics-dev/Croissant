@@ -33,7 +33,6 @@ final class TransitViewModel: ObservableObject {
     private var minuteTimer: AnyCancellable?
     private var refreshTimer: AnyCancellable?
     private var departuresRefreshTimer: AnyCancellable?
-    private var infrequentLocationTimer: AnyCancellable?
     
     // Timer for fallback checks in setupLocationSubscription
     private var fallbackLocationTimer5s: Timer?
@@ -50,13 +49,15 @@ final class TransitViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var lastUpdated: Date?
+    
+    // Adjusted: Only return the formatted time string, no prefix.
     var updatedLabel: String {
         guard let d = lastUpdated else { return "" }
         let f = DateFormatter()
         f.locale = Locale(identifier: "de_DE_POSIX")
         f.timeZone = .current
         f.dateFormat = "HH:mm:ss"
-        return "Updated: \(f.string(from: d))"
+        return f.string(from: d)
     }
     
     // Configuration
@@ -131,7 +132,6 @@ final class TransitViewModel: ObservableObject {
         minuteTimer?.cancel()
         refreshTimer?.cancel()
         departuresRefreshTimer?.cancel()
-        infrequentLocationTimer?.cancel()
         
         // 1) Every minute: recalc ETAs (no network)
         minuteTimer = Timer.publish(every: 10, on: .main, in: .common)
@@ -169,23 +169,15 @@ final class TransitViewModel: ObservableObject {
                 }
             }
         
-        // 2) Every 30 seconds: refresh location + departures (lightweight)
-        refreshTimer = Timer.publish(every: 30, on: .main, in: .common) // Changed from 60 to 30
+        // 2) Every 30 seconds: request a location update.
+        // The subscription handler will then decide if a fetch for new stops is needed.
+        refreshTimer = Timer.publish(every: 30, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 guard let self = self else { return }
-                print("⏱️ [TransitVM] 30 seconds refresh triggered (departures only).") // Updated log message
+                print("⏱️ [TransitVM] 30s timer: Requesting location to check for nearby stop updates.")
                 self.midnightMergeDoneForStop.removeAll()
-                // Do not force a location refresh every minute; departuresRefreshTimer handles data freshness.
-            }
-        
-        // 3) Every 10 minutes: request a fresh location (if available)
-        infrequentLocationTimer = Timer.publish(every: 600, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                guard let self = self else { return }
-                print("🛰️ [TransitVM] 10 minute location refresh triggered.")
-                // Only request if not already waiting for an update
+                // This will trigger the location subscription, which has built-in distance debouncing.
                 self.locationManager?.requestLocation()
             }
     }
@@ -445,7 +437,7 @@ final class TransitViewModel: ObservableObject {
     // MARK: - API Fetching
     
     // Führt den API-Aufruf für nahegelegene Haltestellen durch
-    private func fetchNearbyStops(lat: Double, lon: Double) {
+    func fetchNearbyStops(lat: Double, lon: Double) {
         let currentCoord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
         
         // FIX 3: Parallel-Fetch verhindern
@@ -488,6 +480,9 @@ final class TransitViewModel: ObservableObject {
                     await MainActor.run { [weak self] in // self? in closure
                         self?.errorMessage = "API request failed (Status \(statusCode))"
                         self?.isLoading = false
+                        if self?.updatedLabel.isEmpty == true || self?.updatedLabel == "Update Failed" {
+                             self?.lastUpdated = nil // Clear last updated time or handle failure state
+                        }
                     }
                     return
                 }
@@ -522,6 +517,9 @@ final class TransitViewModel: ObservableObject {
                         self?.errorMessage = "No transit stops found nearby (Search Radius: \(Int(self?.searchRadiusMeters ?? 0))m)."
                         self?.selectedStop = nil
                         self?.isLoading = false
+                        if self?.updatedLabel.isEmpty == true || self?.updatedLabel == "Update Failed" {
+                             self?.lastUpdated = nil
+                        }
                     }
                     return
                 }
@@ -552,6 +550,7 @@ final class TransitViewModel: ObservableObject {
                 await MainActor.run { [weak self] in
                     // Only set loading to false after all departure fetches are done
                     self?.isLoading = false
+                    // Update successful fetch time (ENTFERNT, wird jetzt in fetchDepartures gesetzt)
                 }
                 
             } catch { // FIX: #error durch catch { ersetzt
@@ -560,6 +559,9 @@ final class TransitViewModel: ObservableObject {
                 await MainActor.run { [weak self] in
                     self?.errorMessage = "Network error: \(error.localizedDescription)"
                     self?.isLoading = false
+                    if self?.updatedLabel.isEmpty == true || self?.updatedLabel == "Update Failed" {
+                         self?.lastUpdated = nil
+                    }
                 }
             }
         }
@@ -663,7 +665,7 @@ final class TransitViewModel: ObservableObject {
         
         Task {
             do {
-                let (data, response) = try await URLSession.shared.data(from: url)
+                let (data, response) = try await URLSession.shared.data(for: URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)) // Ignore cache for fresh data
                 guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
                     let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
                     print("❌ 🚇 [TransitVM] Departures failed with HTTP Status Code: \(statusCode)")
@@ -672,6 +674,7 @@ final class TransitViewModel: ObservableObject {
                     }
                     await MainActor.run { [weak self] in
                         self?.errorMessage = "Departures request failed (Status \(statusCode))"
+                        // Do not touch self.lastUpdated here, as this is a sub-fetch
                         completion?([])
                     }
                     return
@@ -736,13 +739,14 @@ final class TransitViewModel: ObservableObject {
                 let sample = mapped.prefix(5).map { "\($0.line.name)→\($0.direction ?? "—") @ \($0.timeString) (\($0.minutesUntilDeparture ?? -1)m)" }.joined(separator: " | ")
                 print("🧾 🚇 [TransitVM] Sample (top 5): \(sample)")
                 
-                await MainActor.run {
+                await MainActor.run { [weak self] in // Fügen Sie hier `[weak self]` hinzu
+                    guard let self = self else { return } // Fügen Sie hier `guard let` hinzu
                     // FIX: Fehlermeldung bei erfolgreichem Fetch löschen
                     self.errorMessage = nil
-                    
-                    // Mark time of the last successful API fetch
+                    // NEU: Update successful fetch time when departures are fetched successfully
                     self.lastUpdated = Date()
-                    // WICHTIGE ÄNDERUNG: Die Aktualisierung von self.departures wurde entfernt.
+                    
+                    // Mark time of the last successful API fetch is done in fetchNearbyStops once all departure fetches complete
                     completion?(mapped)
                 }
             } catch {
@@ -764,7 +768,6 @@ final class TransitViewModel: ObservableObject {
         minuteTimer?.cancel()
         refreshTimer?.cancel()
         departuresRefreshTimer?.cancel()
-        infrequentLocationTimer?.cancel()
         fallbackLocationTimer5s?.invalidate()
         fallbackLocationTimer10s?.invalidate()
     }
