@@ -53,11 +53,6 @@ This is because the app is not (yet) notarized (see the previous question). Proc
 </details>
 
 <details>
-<summary><strong>Is the app open source?</strong></summary>
-Yes, you are welcome to look at the code and contribute if you want. Everything can be found on GitHub.
-</details>
-
-<details>
 <summary><strong>How do you handle my data?</strong></summary>
 I do not store, sell, or otherwise use any data. Your data remains on your device. Exception: Your location is used anonymously to retrieve weather and public transport data. 
 </details>
