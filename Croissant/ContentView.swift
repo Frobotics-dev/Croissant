@@ -3,6 +3,7 @@ import EventKit
 import UniformTypeIdentifiers // Import for UTType.text
 import AppKit
 import Combine
+import Foundation
 
 // MARK: - TileType Enum
 // Definiert die verschiedenen Kacheltypen und ihre Darstellung.
@@ -155,6 +156,8 @@ struct ContentView: View {
 
     // NEU: SystemInfoManager für Batteriestatus
     @StateObject private var systemInfoManager = SystemInfoManager()
+    
+    @StateObject private var daySummaryVM: DaySummaryViewModel
 
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openURL) private var openURL
@@ -182,8 +185,11 @@ struct ContentView: View {
     
     // State-Variablen für den Hover-Effekt der Buttons
     @State private var isHoveringCoffeeButton: Bool = false
+    @State private var isHoveringSummarizeButton: Bool = false
     @State private var isHoveringEditButton: Bool = false
     @State private var isHoveringSettingsButton: Bool = false
+    
+    @State private var showSummaryPopover: Bool = false
 
     // Namespace für matchedGeometryEffect Animationen
     @Namespace private var animationNamespace
@@ -211,6 +217,11 @@ struct ContentView: View {
         self.transitViewModel = transitViewModel // NEU
         self.weatherViewModel = weatherViewModel // ADDED
 
+        _daySummaryVM = StateObject(wrappedValue: DaySummaryViewModel(
+            gemini: GeminiClient(apiKeyProvider: { GeminiAPIKeyStorage.getAPIKey() }),
+            dataProvider: RealDayDataProvider(eventKit: eventKitManager, weather: weatherViewModel, news: newsFeedViewModel)
+        ))
+        
         // Berechne den Standard-Reihenfolgen-String
         let defaultOrderString = TileType.allCases.map(\.rawValue).joined(separator: ",")
 
@@ -239,6 +250,23 @@ struct ContentView: View {
             }
             _tileOrder = State(initialValue: mergedTiles)
         }
+    }
+    
+    @ViewBuilder
+    private func sentimentIndicator(for sentiment: String) -> some View {
+        let color: Color = {
+            switch sentiment {
+            case "1": return .green
+            case "2": return .yellow
+            case "3": return .red
+            default: return .gray
+            }
+        }()
+        
+        Circle()
+            .fill(color)
+            .frame(width: 10, height: 10)
+            .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
     }
 
     var body: some View {
@@ -284,6 +312,73 @@ struct ContentView: View {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             isHoveringCoffeeButton = hovering
                         }
+                    }
+                    .padding(.trailing, 10)
+
+                    // NEU: Summarize Day Button (vor dem Edit Button)
+                    Button {
+                        Task {
+                            await daySummaryVM.summarize()
+                            if !daySummaryVM.summaryText.isEmpty || daySummaryVM.errorMessage != nil {
+                                showSummaryPopover = true
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            if daySummaryVM.isLoading {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "sparkles")
+                            }
+                            if isHoveringSummarizeButton {
+                                Text("Summarize Day")
+                                    .font(.caption)
+                                    .fontWeight(.medium)
+                                    .transition(.opacity.combined(with: .move(edge: .leading)))
+                            }
+                        }
+                    }
+                    .buttonStyle(TahoeToolbarButtonStyle())
+                    .onHover { hovering in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            isHoveringSummarizeButton = hovering
+                        }
+                    }
+                    .popover(isPresented: $showSummaryPopover, arrowEdge: .bottom) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Label("Day Summary", systemImage: "text.bubble")
+                                    .font(.headline)
+                                Spacer()
+                                if !daySummaryVM.sentiment.isEmpty {
+                                    HStack(spacing: 4) {
+                                        Text("Sentiment:")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        sentimentIndicator(for: daySummaryVM.sentiment)
+                                    }
+                                }
+                                Button("Copy") {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(daySummaryVM.summaryText, forType: .string)
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                            if let err = daySummaryVM.errorMessage {
+                                Text("Error: \(err)")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                            if !daySummaryVM.summaryText.isEmpty {
+                                Text(daySummaryVM.summaryText)
+                                    .font(.body)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .textSelection(.enabled)
+                            }
+                        }
+                        .padding()
+                        .frame(idealWidth: 350, maxWidth: 450)
                     }
                     .padding(.trailing, 10)
                     

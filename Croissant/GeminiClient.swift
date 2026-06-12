@@ -39,7 +39,7 @@ class GeminiClient {
             throw GeminiError.missingAPIKey
         }
         
-        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=\(apiKey)") else {
+        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=\(apiKey)") else {
             throw GeminiError.invalidURL
         }
         

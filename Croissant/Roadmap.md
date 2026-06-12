@@ -11,7 +11,6 @@
 
 ## Organisatorisch
 - Anfrage zum Bewerben auf MacRumors, 9to5,...
-- Release zum Download / Updateprozess / GitHub Actions: einfachen Build-Job hinzufügen (macOS runner)
 
 ## Bugs
 - Kurz vor/nach 0 Uhr werden Verbindung doppelt angezeigt/für den darauffolgenden Tag mit Ankunft in >= 1440 Minuten (also einem Tag) 

@@ -7,6 +7,7 @@
 
 import SwiftUI
 import EventKit
+import Combine
 
 // Make EKReminder Identifiable for use with sheet(item:)
 extension EKReminder: @retroactive Identifiable {

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Combine
 
 @MainActor
 class DaySummaryViewModel: ObservableObject {
@@ -45,6 +46,9 @@ class DaySummaryViewModel: ObservableObject {
             // 2. Construct the full prompt
             let fullPrompt = buildFullPrompt(with: dataForPrompt)
             
+            // Log the prompt to the console
+            print("--- Gemini Prompt ---\n\(fullPrompt)\n---------------------")
+            
             // 3. Call Gemini API
             let geminiResponse = try await geminiClient.generateSummary(prompt: fullPrompt)
             
@@ -77,6 +81,11 @@ class DaySummaryViewModel: ObservableObject {
             .replacingOccurrences(of: "[date]", with: dateString)
         
         prompt += "\n" + data
+        
+        if let customSuffix = UserDefaults.standard.string(forKey: "customAIPromptSuffix"), !customSuffix.isEmpty {
+            prompt += "\n\nZusätzliche Anweisungen:\n\(customSuffix)"
+        }
+        
         return prompt
     }
 }

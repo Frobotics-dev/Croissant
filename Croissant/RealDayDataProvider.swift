@@ -61,8 +61,8 @@ class RealDayDataProvider: DayDataProvider {
         if newsItems.isEmpty {
             dataString += "- Keine Nachrichten verfügbar.\n"
         } else {
-            // Take up to 5 headlines to keep the prompt concise
-            for item in newsItems.prefix(5) {
+            // Take up to 10 headlines to keep the prompt concise
+            for item in newsItems.prefix(10) {
                 dataString += "- \(item.title)\n"
             }
         }

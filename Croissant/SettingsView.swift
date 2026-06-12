@@ -11,7 +11,7 @@ private enum SettingsTab: Hashable {
     case appearance
     case calendars
     case news
-    // Removed .transit tab
+    case ai
     case debugging
     case about
 }
@@ -60,7 +60,12 @@ struct SettingsView: View {
                 }
                 .tag(SettingsTab.news)
             
-            // Removed TransitSettingsView tab item
+            // Tab X: AI Settings
+            AISettingsView()
+                .tabItem {
+                    Label("AI", systemImage: "brain.head.profile")
+                }
+                .tag(SettingsTab.ai)
             
             // Tab 5: Debugging (now includes Transit Search Radius and Location)
             DebuggingSettingsView(transitViewModel: transitViewModel, locationManager: locationManager, weatherViewModel: weatherViewModel, newsFeedViewModel: newsFeedViewModel) // Pass newsFeedViewModel here
@@ -292,6 +297,72 @@ private struct NewsSettingsView: View {
             Section(header: Text("Behavior").font(.title2)) {
                 Toggle("Scroll to headline on open", isOn: $enableNewsScrollEffect)
                 Text("When a news headline is clicked to show the description, the view will automatically scroll to bring the headline to the top.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+    }
+}
+
+private struct AISettingsView: View {
+    @State private var apiKey: String = GeminiAPIKeyStorage.getAPIKey() ?? ""
+    @State private var saved: Bool = false
+    @State private var showKey: Bool = false
+    @AppStorage("customAIPromptSuffix") private var customAIPromptSuffix: String = ""
+
+    var body: some View {
+        Form {
+            Section(header: Text("Gemini API").font(.title2)) {
+                HStack(alignment: .center) {
+                    if showKey {
+                        TextField("Enter your Gemini API key", text: $apiKey)
+                            .textFieldStyle(.roundedBorder)
+                            .textContentType(.password)
+                    } else {
+                        SecureField("Enter your Gemini API key", text: $apiKey)
+                            .textFieldStyle(.roundedBorder)
+                            .textContentType(.password)
+                    }
+                    Button(action: { showKey.toggle() }) {
+                        Image(systemName: showKey ? "eye.slash" : "eye")
+                    }
+                    .help(showKey ? "Hide key" : "Show key")
+                }
+                Text("Your key is stored securely in the Keychain and only used to call Gemini when you press the Summarize button.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                HStack {
+                    Button("Save Key") {
+                        saved = GeminiAPIKeyStorage.setAPIKey(apiKey)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    Button("Clear") {
+                        GeminiAPIKeyStorage.clear()
+                        apiKey = ""
+                        saved = false
+                    }
+                    .buttonStyle(.bordered)
+                    if saved {
+                        Label("Saved", systemImage: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                    }
+                }
+            }
+            
+            Section(header: Text("Custom Prompt Instructions").font(.title2)) {
+                TextField("Enter any text to append to the summary prompt...", text: $customAIPromptSuffix, axis: .vertical)
+                    .lineLimit(3...5)
+                    .textFieldStyle(.roundedBorder)
+                Text("This text will be added to the end of the prompt sent to the AI. You can use it to give extra instructions, like 'answer in English' or 'focus on financial news'.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Section(header: Text("Privacy").font(.title2)) {
+                Text("Croissant sends only the data needed to generate your day summary to the Gemini API when you explicitly request it. No data is sent automatically.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
