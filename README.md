@@ -1,3 +1,5 @@
+**Update June 2026**: The app now is notarized by Apple and available on the App Store.
+
 ## Croissant: Your Daily Essential.
 
 Croissant is a minimalist macOS dashboard designed to start your day right — combining weather, news, calendar events, reminders, system info and nearby public transport departures in one elegant view.
